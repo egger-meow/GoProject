@@ -34,6 +34,10 @@ func MAX_ATOM_ASA_List(VDW_Radius_List map[string]float64, probe_size int ) map[
 
 func main(){
 	checkArgs()
+<<<<<<< HEAD
+=======
+	fuc
+>>>>>>> 4db77c6ae43eb9c5b08d02be529c3d523aa2e730
 	
   /** /
 	VDW_Radius_List := VDW_Radius_List()
