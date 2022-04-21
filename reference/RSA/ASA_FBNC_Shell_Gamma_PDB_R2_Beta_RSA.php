@@ -60,8 +60,10 @@ function PDB_To_Shells($path){
 			if (!is_array($array) || empty($array)) {
 				return NULL;
 			}
+
+      $Keys = array_keys($array);
 		
-			return array_keys($array)[count($array)-1];
+			return $Keys[ count($array) - 1 ];
 		}
 	}
 	
@@ -139,7 +141,7 @@ function Atom_Data_Extraction_Simple($pdb_path, $chosen_chain_id, $keep_heteroat
 		if ($res_name == "HOH"){continue;}                  #skip water data
 		if ($chain_id != $chosen_chain_id){continue;}       #skip unchosen chains 
 		if(!($altLoc == "" || $altLoc == "A")){continue;}	#choose only single altLoc
-		
+
 		if(!Isset($VDW_Radius_List[$element_name])){
 			echo "unknown element:$atom_number\t$element_name"; return False;
 		} #abort and return false if uncommon atom is in the protein
@@ -156,10 +158,11 @@ function Atom_Data_Extraction_Simple($pdb_path, $chosen_chain_id, $keep_heteroat
 		#saving atom data 
 		
 		
+		
 	}//foreach($Get as $line)
 	
 	
-	if($Atom_Info_DB === [] ){ Return False; } #checking
+	if ($Atom_Info_DB === Array()){ Return False; } #checking
 	
 	return True;
 }
@@ -168,7 +171,7 @@ function Atom_Data_Extraction_Simple($pdb_path, $chosen_chain_id, $keep_heteroat
 
 function VDW_Radius_List(){ 
 	
-	$VDW_Radius_List = [];
+	$VDW_Radius_List = Array();
 	$VDW_Radius_List["H"] = 1.2  ;
 	//$VDW_Radius_List["H"] = 1  ;
 	$VDW_Radius_List["C"] = 1.7  ;
@@ -213,7 +216,7 @@ function Max_RES_ASA(){
 
 function Residue_Radius($safty_factor = 1){ 
 
-	$Res_R = [] ; 
+	$Res_R = Array() ; 
 	$Res_R["CYS"] = 3.881 * $safty_factor; 
 	$Res_R["GLU"] = 5.192 * $safty_factor;
 	$Res_R["HIS"] = 5.816 * $safty_factor;
@@ -279,8 +282,12 @@ $Max_RES_ASA = Max_RES_ASA();
 $Res_R = Residue_Radius();
 
 $Probing_TSS_Cutoff_List = Probing_TSS_Cutoff_List($VDW_Radius_List, $probe_size);
-$MAX_ATOM_ASA_List = MAX_ATOM_ASA_List($VDW_Radius_List, $probe_size);
+Print_r($VDW_Radius_List);
+echo $probe_size;
 
+
+$MAX_ATOM_ASA_List = MAX_ATOM_ASA_List($VDW_Radius_List, $probe_size);
+Print_r ($MAX_ATOM_ASA_List) ;
 
 $Atom_Info_DB = Array();
 $Heteroatom_Info_DB = Array();
@@ -320,10 +327,10 @@ foreach ($Atom_Info_DB as $Atom_Data){
 	
 }//foreach ($Atom_Info_DB as $Atom_Data){
 
-	
+
+
 
 ##Spherical grid preparation
-
 
 $path = "s642-v9_20_5.pdb"; # spherical grids in pdb form
 $Spherical_Grid_Set = PDB_To_Shells($path); #extraction
@@ -355,16 +362,17 @@ foreach($VDW_Radius_List as $element_name => $vdw_r){
 
 }//foreach($VDW_Radius_List as $element_name => $vdw_r){
 
-///
+
+
 
 ##Get data of neighboring residues 
 
-$Neighboring_Res_List = [];
+$Neighboring_Res_List = Array();
 foreach($Alpha_Carbon_List as $res_num => $atom_number){	
 	
 
-	(!Isset($Neighboring_Res_List[$res_num])){
-		$Neighboring_Res_List[$res_num] = [];
+	if(!Isset($Neighboring_Res_List[$res_num])){
+		$Neighboring_Res_List[$res_num] = Array();
 	}
 	
 	
@@ -452,7 +460,7 @@ foreach($Neighboring_Res_List as $res_num => $Target_Res_List){
 	
 }//foreach($Neighboring_Res_List
 
-////
+
 
 ##Delete self-paring data 
 $Temp = Array();
