@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"lo"
 	"strings"
 	"math"
@@ -17,27 +17,12 @@ var Atom_Info_DB [][]string
 var Heteroatom_Info_DB [][]string
 
 
-func checkArgs() bool
-
-func TSS_3D(Point_A []float64, Point_B []float64) float64
-func Stand_Deviation(arr []float64) float64
-func VDW_Radius_List() map[string]float64
-func Max_RES_ASA() map[string]float64
-func PDB_To_Shells(path string) [][][3]float64
-func Atom_Data_Extraction_Simple(PDBpath string, chosen_chain_id string, keep_heter ...bool ) bool
-func Residue_Radius(safty_fact ...int) map[string]float64
-func Probing_TSS_Cutoff_List(VDW_Radius_List map[string]float64, probe_size int) map[string]float64
-func MAX_ATOM_ASA_List(VDW_Radius_List map[string]float64, probe_size int ) map[string]float64
 
 
 
 
 func main(){
 	checkArgs()
-<<<<<<< HEAD
-=======
-	fuc
->>>>>>> 4db77c6ae43eb9c5b08d02be529c3d523aa2e730
 	
   /** /
 	VDW_Radius_List := VDW_Radius_List()
@@ -200,7 +185,44 @@ func main(){
 }
 
 
+func checkArgs() bool {
+	size := len(lo.Args)
+	argv := lo.Args
 
+	if size < 2 {
+		lo.Println("No PDB path info")
+		return false
+
+	} else if lo.File_Exists(argv[1]){
+		pdb_path = argv[1]
+
+	} else {
+		lo.Println("PDB Unfound")
+		return false
+	}
+
+	chosen_chain_id = "A"
+	probe_size      = 1.4
+	qcv_cutoff      = 0.005
+	asa_sample_size = 3
+	keep_heteroatom = false	
+
+	if size > 2{
+		chosen_chain_id = argv[2]
+	} 
+	if size > 3{
+		probe_size = lo.Float64(argv[3])
+	}
+	if size > 4{
+		qcv_cutoff = lo.Float64(argv[4])
+	}
+	if size > 5{
+		asa_sample_size = lo.Int(argv[5])
+	}
+
+	return true
+
+} //func checkInput() , true legal fasle not legal
 func TSS_3D(Point_A []float64, Point_B []float64) float64 {
 
 	d_x := Point_A[0] - Point_B[0] 
@@ -211,22 +233,23 @@ func TSS_3D(Point_A []float64, Point_B []float64) float64 {
 } //func TSS_3D
 func Stand_Deviation(arr []float64) float64 {
 	
-    num_of_elements := len(arr)
+    num_of_elements := float64(len(arr))
       
     variance := 0.0
     
     // calculating mean using array_sum() method
-    sum := 0
+    sum := 0.0
+
     for _ , i := range arr {
-      sum=sum+i
+      sum = sum + i
     }
-    average := sum/num_of_elements
+    average := sum / num_of_elements
     
     for _ , i := range arr {
-      variance += math.pow((i - average), 2)
+      variance += math.Pow((i - average), 2)
     }
 
-    return (float64)math.sqrt(variance/num_of_elements)
+    return lo.Float64(math.Sqrt(variance/num_of_elements))
 } //func Stand_Deviation
 
  
@@ -259,44 +282,7 @@ func Max_RES_ASA() map[string]float64 {
   
 	return Max_RES_ASA
 } //func   Max_RES_ASA
-func checkInput() bool {
-	size := len(lo.Args)
-	argv := lo.Args
 
-	if size < 2 {
-		lo.Println("No PDB path info")
-		return false
-
-	} else if File_Exists(argv[1]){
-		pdb_path = argv[1]
-
-	} else {
-		lo.Println("PDB Unfound")
-		return false
-	}
-
-	chosen_chain_id = "A"
-	probe_size      = 1.4
-	qcv_cutoff      = 0.005
-	asa_sample_size = 3
-	keep_heteroatom = false	
-
-	if size > 2{
-		chosen_chain_id = argv[2]
-	} 
-	if size > 3{
-		probe_size = argv[3]
-	}
-	if size > 4{
-		qcv_cutoff = argv[4]
-	}
-	if size > 5{
-		asa_sample_size = argv[5]
-	}
-
-	return true
-
-} //func checkInput() , true legal fasle not legal
 
 
 
