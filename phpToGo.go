@@ -13,8 +13,8 @@ var probe_size float64       //vdw radius of the probe
 var qcv_cutoff float64      //qaulity control value as threshold for result
 var asa_sample_size int    //the number of latest asa sample to use for quality control 
 var keep_heteroatom bool  //heteroatom as default
-var Atom_Info_DB [][]string
-var Heteroatom_Info_DB [][]string
+var Atom_Info_DB map[int][]string
+var Heteroatom_Info_DB map[int][]string
 
 
 
@@ -23,7 +23,7 @@ var Heteroatom_Info_DB [][]string
 
 func main(){
 	checkArgs()
-	
+
   /** /
 	VDW_Radius_List := VDW_Radius_List()
   Max_RES_ASA     := Max_RES_ASA()
@@ -182,7 +182,21 @@ func main(){
 		}
 	}
 	/**/
+	lo.Println(Residue_Radius())
+	//Atom_Data_Extraction_Simple(pdb_path,chosen_chain_id)
 }
+
+
+
+func TSS_3D(Point_A []float64, Point_B []float64) float64 {
+
+	d_x := Point_A[0] - Point_B[0] 
+	d_y := Point_A[1] - Point_B[1] 
+	d_z := Point_A[2] - Point_B[2] 	
+
+	return d_x*d_x + d_y*d_y + d_z*d_z
+} //func TSS_3D
+
 
 
 func checkArgs() bool {
@@ -223,14 +237,9 @@ func checkArgs() bool {
 	return true
 
 } //func checkInput() , true legal fasle not legal
-func TSS_3D(Point_A []float64, Point_B []float64) float64 {
 
-	d_x := Point_A[0] - Point_B[0] 
-	d_y := Point_A[1] - Point_B[1] 
-	d_z := Point_A[2] - Point_B[2] 	
 
-	return d_x*d_x + d_y*d_y + d_z*d_z
-} //func TSS_3D
+
 func Stand_Deviation(arr []float64) float64 {
 	
     num_of_elements := float64(len(arr))
@@ -251,38 +260,6 @@ func Stand_Deviation(arr []float64) float64 {
 
     return lo.Float64(math.Sqrt(variance/num_of_elements))
 } //func Stand_Deviation
-
- 
-
-
-func Max_RES_ASA() map[string]float64 { 
-	
-	Max_RES_ASA := map[string]float64{}
-	Max_RES_ASA["ALA"] = 121 
-	Max_RES_ASA["ARG"] = 265 
-	Max_RES_ASA["ASN"] = 187 
-	Max_RES_ASA["ASP"] = 187 
-	Max_RES_ASA["CYS"] = 148 
-	Max_RES_ASA["GLU"] = 214 
-	Max_RES_ASA["GLN"] = 214 
-	Max_RES_ASA["GLY"] = 97  
-	Max_RES_ASA["HIS"] = 216 
-	Max_RES_ASA["ILE"] = 195 
-	Max_RES_ASA["LEU"] = 191 
-	Max_RES_ASA["LYS"] = 230 
-	Max_RES_ASA["MET"] = 203 
-	Max_RES_ASA["PHE"] = 228 
-	Max_RES_ASA["PRO"] = 154 
-	Max_RES_ASA["SER"] = 143 
-	Max_RES_ASA["THR"] = 163 
-	Max_RES_ASA["TRP"] = 264 
-	Max_RES_ASA["TYR"] = 255 
-	Max_RES_ASA["VAL"] = 165 
-	//Max_RES_ASA["SEC"] =   ??? 
-  
-	return Max_RES_ASA
-} //func   Max_RES_ASA
-
 
 
 
@@ -323,73 +300,104 @@ func PDB_To_Shells(path string) [][][3]float64 {
 
 
 
+
 func Atom_Data_Extraction_Simple(PDBpath string, chosen_chain_id string, keep_heter ...bool ) bool{
 	
 	keep_heteroatom := false
 	if len(keep_heter) != 0 {
 		keep_heteroatom = keep_heter[0]
 	}
-	Atom_Info_DB       := [][]string{}
-  Heteroatom_Info_DB := [][]string{}
+
 
 	VDW_Radius_List := VDW_Radius_List()
 
-	Get := strings.Split(strings.Trim(lo.File_Get_contents(PDBpath),"\t\n\n\r\x0B"),"\n")
-
+	Get := strings.Split(strings.Trim(lo.File_Get_Contents(PDBpath),"\t\n\n\r\x0B"),"\n")
+	lo.Println(len(Get[0]))
 	for _,line := range Get {
 
-		record_type := strings.Trim(line[0:6],"\t\n\n\r\x0B");  //ATOM     #0
-		atom_number := strings.Trim(line[6:11],"\t\n\n\r\x0B");  //802      #1
-		atom_type   := strings.Trim(line[12:16],"\t\n\n\r\x0B"); //CA       #2
-		altLoc      := strings.Trim(line[16:17],"\t\n\n\r\x0B"); //         #3
-		res_name    := strings.Trim(line[17:20],"\t\n\n\r\x0B"); //LYS      #4
-		chain_id    := strings.Trim(line[21:22],"\t\n\n\r\x0B"); //A        #5
-		res_num     := strings.Trim(line[22:26],"\t\n\n\r\x0B"); //105      #6
-		iCode       := strings.Trim(line[26:27],"\t\n\n\r\x0B"); //         #7
+		record_type := lo.Trim(line[0:6]);  //ATOM     #0
+		atom_number := lo.Trim(line[6:11]);  //802      #1
+		atom_type   := lo.Trim(line[12:16]); //CA       #2
+		altLoc      := lo.Trim(line[16:17]); //         #3
+		res_name    := lo.Trim(line[17:20]); //LYS      #4
+		chain_id    := lo.Trim(line[21:22]); //A        #5
+		res_num     := lo.Trim(line[22:26]); //105      #6
+		iCode       := lo.Trim(line[26:27]); //         #7
 		
-		x := strings.Trim(line[30:38],"\t\n\n\r\x0B"); //30.356   #8
-		y := strings.Trim(line[38:46],"\t\n\n\r\x0B"); //2.148    #9
-		z := strings.Trim(line[46:54],"\t\n\n\r\x0B"); //10.394   #10
+		x := lo.Trim(line[30:38]); //30.356   #8
+		y := lo.Trim(line[38:46]); //2.148    #9
+		z := lo.Trim(line[46:54]); //10.394   #10
 
-		occupancy    := strings.Trim(line[54:60],"\t\n\n\r\x0B"); //1.00     #11
-		temp_factor  := strings.Trim(line[60:66],"\t\n\n\r\x0B"); //29.41    #12
-		element_name := strings.Trim(line[76:78],"\t\n\n\r\x0B"); //C        #13
-		charge       := strings.Trim(line[78:80],"\t\n\n\r\x0B"); //         #14
 
+		occupancy    := lo.Trim(line[54:60]); //1.00     #11
+		temp_factor  := lo.Trim(line[60:66]); //29.41    #12
+		element_name := lo.Trim(line[76:78]); //C        #13
+		charge       := "?" //         #14
+		lo.Println(element_name,len(element_name))
 		if res_name == "HOH" || chain_id != chosen_chain_id || !(altLoc == "" || altLoc == "A"){
 			continue
 		}         //skip water data
 
-		if VDW_Radius_List[element_name]==""{
+		 if VDW_Radius_List[element_name] == 0 {
 			lo.Println("unknown element:",atom_number,"\t",element_name)
 		  return false
-		}
-		
+		} 
+		//lo.Println(record_type)
+		//lo.Println([]string{record_type, atom_number, atom_type, altLoc , res_name, chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge})
 		if record_type == "ATOM" {
-			Atom_Info_DB[atom_number] = []string{record_type, atom_number, atom_type, altLoc , res_name, chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge}
+			Atom_Info_DB[lo.Int(atom_number)] = []string{record_type, atom_number, atom_type, altLoc , res_name, chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge}
 		} else if record_type == "HETATM" && keep_heteroatom == true {
-			Heteroatom_Info_DB[atom_number] = []string{record_type, atom_number, atom_type, altLoc , res_name, chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge}
+			Heteroatom_Info_DB[lo.Int(atom_number)] = []string{record_type, atom_number, atom_type, altLoc , res_name, chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge}
 		} else {
 			continue
 		}
 
-		if len(Atom_Info_DB) == 0{
-			return false 
-		} //checking
-	
-		return true;
+		
 	}
+	if len(Atom_Info_DB) == 0{
+		return false 
+	} //checking
+
+	return true;
 }
+
+func Max_RES_ASA() map[string]float64 { 
+	
+	Max_RES_ASA := map[string]float64{}
+	Max_RES_ASA["ALA"] = 121 
+	Max_RES_ASA["ARG"] = 265 
+	Max_RES_ASA["ASN"] = 187 
+	Max_RES_ASA["ASP"] = 187 
+	Max_RES_ASA["CYS"] = 148 
+	Max_RES_ASA["GLU"] = 214 
+	Max_RES_ASA["GLN"] = 214 
+	Max_RES_ASA["GLY"] = 97  
+	Max_RES_ASA["HIS"] = 216 
+	Max_RES_ASA["ILE"] = 195 
+	Max_RES_ASA["LEU"] = 191 
+	Max_RES_ASA["LYS"] = 230 
+	Max_RES_ASA["MET"] = 203 
+	Max_RES_ASA["PHE"] = 228 
+	Max_RES_ASA["PRO"] = 154 
+	Max_RES_ASA["SER"] = 143 
+	Max_RES_ASA["THR"] = 163 
+	Max_RES_ASA["TRP"] = 264 
+	Max_RES_ASA["TYR"] = 255 
+	Max_RES_ASA["VAL"] = 165 
+	//Max_RES_ASA["SEC"] =   ??? 
+  
+	return Max_RES_ASA
+} //func   Max_RES_ASA
 
 
 
 func Residue_Radius(safty_fact ...int) map[string]float64 { 
 
-	safty_factor := 1
+	safty_factor := 1.0
 	if len(safty_fact) == 1 {
-		safty_factor = safty_fact[0]
+		safty_factor = lo.Float64(safty_fact[0])
 	}
-	Res_R = map[string]float64{}  
+	Res_R := map[string]float64{}  
 	Res_R["CYS"] = 3.881 * safty_factor 
 	Res_R["GLU"] = 5.192 * safty_factor
 	Res_R["HIS"] = 5.816 * safty_factor
@@ -424,7 +432,7 @@ func Probing_TSS_Cutoff_List(VDW_Radius_List map[string]float64, probe_size int)
 	Probing_TSS_Cutoff_List := map[string]float64{}
 	
 	for element_name, vdw_r := range VDW_Radius_List{
-		radious := vdw_r + probe_size
+		radious := vdw_r + lo.Float64(probe_size)
 		Probing_TSS_Cutoff_List[element_name] = radious * radious
 	} //for element_name, vdw_r
 	
@@ -439,7 +447,7 @@ func MAX_ATOM_ASA_List(VDW_Radius_List map[string]float64, probe_size int ) map[
 	MAX_ATOM_ASA_List := map[string]float64{}
 
 	for element_name, vdw_r := range VDW_Radius_List{
-		MAX_ATOM_ASA_List[element_name] =  4 * math.Pi * (vdw_r + probe_size) * (vdw_r + probe_size) 
+		MAX_ATOM_ASA_List[element_name] =  4 * math.Pi * (vdw_r + lo.Float64(probe_size)) * (vdw_r + lo.Float64(probe_size)) 
 	} //for element_name, vdw_r
 
 	return MAX_ATOM_ASA_List

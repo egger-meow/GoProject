@@ -118,6 +118,7 @@ function Atom_Data_Extraction_Simple($pdb_path, $chosen_chain_id, $keep_heteroat
 	$VDW_Radius_List = VDW_Radius_List(); #set up to check if any uncommon atom is in the protein
 	
 	$Get = Explode("\n",Trim(File_Get_contents($pdb_path))); 
+	print_r(strlen($Get[0]));
 	foreach($Get as $line){
 		
 		//Example: ATOM    802  CA  LYS A 105      30.356   2.148  10.394  1.00 29.41           C  
@@ -145,7 +146,8 @@ function Atom_Data_Extraction_Simple($pdb_path, $chosen_chain_id, $keep_heteroat
 		if(!Isset($VDW_Radius_List[$element_name])){
 			echo "unknown element:$atom_number\t$element_name"; return False;
 		} #abort and return false if uncommon atom is in the protein
-		
+		echo "$record_type\n";
+		print_r(Array($record_type, $atom_number, $atom_type, $altLoc , $res_name, $chain_id, $res_num, $iCode, $x, $y, $z, $occupancy, $temp_factor, $element_name, $charge));
 		if($record_type == "ATOM"){
 			#save infomation of atoms
 			$Atom_Info_DB[$atom_number] = Array($record_type, $atom_number, $atom_type, $altLoc , $res_name, $chain_id, $res_num, $iCode, $x, $y, $z, $occupancy, $temp_factor, $element_name, $charge);
@@ -243,6 +245,7 @@ function Residue_Radius($safty_factor = 1){
 	return $Res_R;
 }
 #Define possible distance from CA to farest atom in each residue for 
+
 
 
 
@@ -661,7 +664,6 @@ foreach($Resisue_ASA_Unnormalized_Sum as $res_num => $residue_asa_unnormalized){
 
 
 /**/
-$fu=$TSS_3D(Array(1.1,2,3), Array(1.11,2,3));
-echo "$fu";
+
 
 ?>
