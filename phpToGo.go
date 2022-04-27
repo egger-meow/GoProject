@@ -9,7 +9,7 @@ import (
 
 var pdb_path string
 var chosen_chain_id string    //Chain ID
-var probe_size float64       //vdw radius of the probe 
+var probe_size int       //vdw radius of the probe 
 var qcv_cutoff float64      //qaulity control value as threshold for result
 var asa_sample_size int    //the number of latest asa sample to use for quality control 
 var keep_heteroatom bool  //heteroatom as default
@@ -33,8 +33,6 @@ func main(){
   MAX_ATOM_ASA_List := MAX_ATOM_ASA_List(VDW_Radius_List, probe_size)
 
 
-  Atom_Info_DB := map[string]float64{}
-  Heteroatom_Info_DB := map[string]float64{}
   check := Atom_Data_Extraction_Simple(pdb_path, chosen_chain_id) //Atom info database
   if(check == false){
     lo.Print( "Error" )
@@ -85,10 +83,11 @@ func main(){
     radius := vdw_r + probe_size 
     
     for group_id, Spherical_Grid := range Spherical_Grid_Set{  
-     // Expanded_Spherical_Grid_Set[element_name][group_id] := map[int][3]float64 
+      Expanded_Spherical_Grid_Set[element_name][group_id] := map[int][3]float64 
       
       //expand the grids to right size accoring to vdw radious of elements
       for dot_index, Dot := range Spherical_Grid {
+        Expanded_Dot := make([]float64, 3)
         Expanded_Dot[0] = Dot[0] * radius 
         Expanded_Dot[1] = Dot[1] * radius 
         Expanded_Dot[2] = Dot[2] * radius 
@@ -115,7 +114,7 @@ func main(){
 				continue
 			}
 
-			tss = TSS_3D(Pos[atom_number], Pos[target_atom_number])
+			tss := TSS_3D(Pos[atom_number], Pos[target_atom_number])
 
 			res_name        = ResNum_To_ResName[res_num]
 			target_res_name = ResNum_To_ResName[target_res_num]
@@ -150,7 +149,7 @@ func main(){
 			res_pair_log[res_num][target_res_num] = true
 			res_pair_log[target_res_num][res_num] = true
 			
-			for _,atom_number := Atoms_in_Res[res_num]{
+			for _,atom_number := range Atoms_in_Res[res_num]{
 
 				element_name = AN_To_Element_List[atom_number]
 				vdw_r        = VDW_Radius_List[element_name]
@@ -198,7 +197,7 @@ func main(){
 	
 	} //for atom_number,Target_Data := range Proximity_Table 
 
-	Proximity_Table := Temp
+	Proximity_Table = Temp
 
 	Log_Refined_ASA               := map[int]int{}
   Resisue_ASA_Unnormalized_Sum  := map[int]int{}
@@ -246,7 +245,7 @@ func main(){
 				
 				probe_tss_cutoff    = Probing_TSS_Cutoff_List[target_element_name] ;
 				
-				for index, Shifted_Dot := range Shifted_Dot_List){
+				for index, Shifted_Dot := range Shifted_Dot_List{
 					if TSS_3D(Target_Pos, Shifted_Dot) < probe_tss_cutoff {
 						Shifted_Dot_List = append(Shifted_Dot_List[:index], Shifted_Dot_List[index+1:]...)
              
@@ -256,8 +255,8 @@ func main(){
 			}//foreach($Target_AN_List as $target_atom_number => $tss){
 			
 	
-			lefted_dot_count      := len($Shifted_Dot_List)
-			atom_asa_unnormalized := MAX_ATOM_ASA_List[$element_name] * lefted_dot_count //unnormalized atom asa
+			lefted_dot_count      := len(Shifted_Dot_List)
+			atom_asa_unnormalized := MAX_ATOM_ASA_List[element_name] * lefted_dot_count //unnormalized atom asa
 			protein_asa_unnormalized += atom_asa_unnormalized //saving
 			
 			res_num = Atom_Info_DB[atom_number][6]
