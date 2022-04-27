@@ -9,7 +9,7 @@ import (
 
 var pdb_path string
 var chosen_chain_id string    //Chain ID
-var probe_size int       //vdw radius of the probe 
+var probe_size float64       //vdw radius of the probe 
 var qcv_cutoff float64      //qaulity control value as threshold for result
 var asa_sample_size int    //the number of latest asa sample to use for quality control 
 var keep_heteroatom bool  //heteroatom as default
@@ -27,6 +27,8 @@ func main(){
   /**/
 	VDW_Radius_List := VDW_Radius_List()
   Max_RES_ASA     := Max_RES_ASA()
+
+	_=Max_RES_ASA
   Res_R           := Residue_Radius()
 
   Probing_TSS_Cutoff_List := Probing_TSS_Cutoff_List(VDW_Radius_List, probe_size)
@@ -40,11 +42,11 @@ func main(){
   }
 
 
-  Pos := [][3]int{}                // atom coordinates
-  Alpha_Carbon_List := []int{}   // res_num to alpha carnbon atom number
-  Atoms_in_Res := [][]int{}         // atoms list under resnum
-  AN_To_Element_List := []string{}  // atom number to element list 
-  ResNum_To_ResName := []string{}   // res_num to res_name
+  Pos                := map[int][3]float64{}                // atom coordinates
+  Alpha_Carbon_List  := map[int]int{}   // res_num to alpha carnbon atom number
+  Atoms_in_Res       := map[int][]int{}         // atoms list under resnum
+  AN_To_Element_List := map[int]string{}  // atom number to element list 
+  ResNum_To_ResName  := map[int]string{}   // res_num to res_name
 
   for _, Atom_Data := range Atom_Info_DB{
     atom_number := lo.Int(Atom_Data[1])   
@@ -53,13 +55,13 @@ func main(){
     res_name := Atom_Data[4]   
     res_num  := lo.Int(Atom_Data[6])   
     
-    x :=        lo.Float64(Atom_Data[8] )  
-    y :=        lo.Float64(Atom_Data[9] ) 
-    z :=           lo.Float64(Atom_Data[10])  
+    x := lo.Float64(Atom_Data[8] )  
+    y := lo.Float64(Atom_Data[9] ) 
+    z := lo.Float64(Atom_Data[10])  
     
     element_name :=   Atom_Data[13]  
 	
-    Pos[atom_number] = []float64{x, y, z} 
+    Pos[atom_number] = [3]float64{x, y, z} 
     AN_To_Element_List[atom_number] = element_name 
 	
     if (atom_type == "CA" ){
@@ -67,7 +69,7 @@ func main(){
       ResNum_To_ResName[res_num] = res_name  
     }
 
-    Atoms_in_Res[res_num] = atom_number 
+    Atoms_in_Res[res_num] = append(Atoms_in_Res[res_num],atom_number) 
     
   } //for _, Atom_Data
 
@@ -77,17 +79,17 @@ func main(){
   path := "s642-v9_20_5.pdb" // spherical grids in pdb form
   Spherical_Grid_Set := PDB_To_Shells(path) //extraction
   group_count := len(Spherical_Grid_Set) //get number of groups of grids
-
+  _=group_count
   Expanded_Spherical_Grid_Set :=  map[string]map[int]map[int][3]float64{} // pre-expanded spherical grids 
   for element_name, vdw_r := range VDW_Radius_List{   
     radius := vdw_r + probe_size 
     
     for group_id, Spherical_Grid := range Spherical_Grid_Set{  
-      Expanded_Spherical_Grid_Set[element_name][group_id] := map[int][3]float64 
+      //Expanded_Spherical_Grid_Set[element_name][group_id] := map[int][3]float64 
       
       //expand the grids to right size accoring to vdw radious of elements
       for dot_index, Dot := range Spherical_Grid {
-        Expanded_Dot := make([]float64, 3)
+        Expanded_Dot := [3]float64{}
         Expanded_Dot[0] = Dot[0] * radius 
         Expanded_Dot[1] = Dot[1] * radius 
         Expanded_Dot[2] = Dot[2] * radius 
@@ -116,14 +118,14 @@ func main(){
 
 			tss := TSS_3D(Pos[atom_number], Pos[target_atom_number])
 
-			res_name        = ResNum_To_ResName[res_num]
-			target_res_name = ResNum_To_ResName[target_res_num]
+			res_name        := ResNum_To_ResName[res_num]
+			target_res_name := ResNum_To_ResName[target_res_num]
 			
-			res_name_r   = Res_R[res_name]
-			target_res_r = Res_R[target_res_name]
+			res_name_r   := Res_R[res_name]
+			target_res_r := Res_R[target_res_name]
 
-			cutoff_dist_res =  res_name_r  + 6.4 + target_res_r
-			cutoff_tss_res  =  cutoff_dist_res * cutoff_dist_res 
+			cutoff_dist_res :=  res_name_r  + 6.4 + target_res_r
+			cutoff_tss_res  :=  cutoff_dist_res * cutoff_dist_res 
 			
 			if(tss <= cutoff_tss_res){
 			
@@ -140,7 +142,7 @@ func main(){
 
 	for res_num,Target_Res_List := range Neighboring_Res_List{
 
-		for target_res_num,boolen := range Target_Res_List{
+		for target_res_num,_ := range Target_Res_List{
 
 			if res_pair_log[res_num][target_res_num]{
 				continue
@@ -151,8 +153,8 @@ func main(){
 			
 			for _,atom_number := range Atoms_in_Res[res_num]{
 
-				element_name = AN_To_Element_List[atom_number]
-				vdw_r        = VDW_Radius_List[element_name]
+				element_name := AN_To_Element_List[atom_number]
+				vdw_r        := VDW_Radius_List[element_name]
 
 				for _,target_atom_number := range Atoms_in_Res[target_res_num]{
 					
@@ -161,15 +163,15 @@ func main(){
 					}
 
 					//tss calculation
-					tss = TSS_3D(Pos[atom_number], Pos[target_atom_number])
+					tss := TSS_3D(Pos[atom_number], Pos[target_atom_number])
 					
 					//cutoff calculation
 
 					target_element_name := AN_To_Element_List[target_atom_number]
-					target_vdw_r         = VDW_Radius_List[target_element_name]
+					target_vdw_r        := VDW_Radius_List[target_element_name]
 
-					cutoff_dist = vdw_r + 2.8 + target_vdw_r
-					cutoff_tss = cutoff_dist * cutoff_dist
+					cutoff_dist := vdw_r + 2.8 + target_vdw_r
+					cutoff_tss := cutoff_dist * cutoff_dist
 
 					if(tss <= cutoff_tss){
 						Proximity_Table[atom_number][target_atom_number] = tss 
@@ -181,7 +183,7 @@ func main(){
 		}
 	}
 
-	Temp := map[int]map[int]float64
+	Temp := map[int]map[int]float64{}
 
 	for atom_number,Target_Data := range Proximity_Table {
 	
@@ -193,20 +195,21 @@ func main(){
 			Temp[atom_number][target_atom_number] = tss;
 		} //for target_atom_number,tss := range Target_Data
 		
-		lo.SortFloat64Slice(Temp[atom_number])
+		//!!!!!!
+		//lo.SortFloat64Slice(Temp[atom_number])
 	
 	} //for atom_number,Target_Data := range Proximity_Table 
 
 	Proximity_Table = Temp
 
-	Log_Refined_ASA               := map[int]int{}
-  Resisue_ASA_Unnormalized_Sum  := map[int]int{}
+	Log_Refined_ASA               := map[int]float64{}
+  Resisue_ASA_Unnormalized_Sum  := map[int]float64{}
 
-  for res_num, res_name := range ResNum_To_ResName {
+  for res_num, _ := range ResNum_To_ResName {
 		Resisue_ASA_Unnormalized_Sum[res_num] = 0;
   } //for res_num, res_name := range ResNum_To_ResName
 
-	protein_asa_unnormalized := 0 //unnormalized protein_asa
+	protein_asa_unnormalized := 0.0 //unnormalized protein_asa
 	used_dot_count           := 0  //number of dots of used spherical grid groups   
 
 
@@ -222,16 +225,16 @@ func main(){
 			y := Pos[atom_number][1]
 			z := Pos[atom_number][2]
 			
-			element_name = AN_To_Element_List[atom_number];
+			element_name := AN_To_Element_List[atom_number];
 			
 			Expanded_Spherical_Grid = Expanded_Spherical_Grid_Set[element_name][group_id] 
 	
 			//Shifting spherical grid around target atom		
 			
-			Shifted_Dot_List := [][]float64{}
+			Shifted_Dot_List := [][3]float64{}
 			for _,Expanded_Dot := range Expanded_Spherical_Grid{
 				
-				Shifted_Dot_List = append(Shifted_Dot_List,[]float64{x + Expanded_Dot[0],y + Expanded_Dot[1],z + Expanded_Dot[2] })
+				Shifted_Dot_List = append(Shifted_Dot_List,[3]float64{x + Expanded_Dot[0],y + Expanded_Dot[1],z + Expanded_Dot[2] })
 				
 			}//foreach($Expanded_Spherical_Grid as $Expanded_Dot){
 				
@@ -239,11 +242,11 @@ func main(){
 			//Probing solvent available spots  	
 
 			for target_atom_number, tss := range Target_AN_List{
-			
-				target_element_name = AN_To_Element_List[target_atom_number]
-				Target_Pos          = Pos[target_atom_number]
+				_=tss
+				target_element_name := AN_To_Element_List[target_atom_number]
+				Target_Pos          := Pos[target_atom_number]
 				
-				probe_tss_cutoff    = Probing_TSS_Cutoff_List[target_element_name] ;
+				probe_tss_cutoff    := Probing_TSS_Cutoff_List[target_element_name] ;
 				
 				for index, Shifted_Dot := range Shifted_Dot_List{
 					if TSS_3D(Target_Pos, Shifted_Dot) < probe_tss_cutoff {
@@ -255,11 +258,11 @@ func main(){
 			}//foreach($Target_AN_List as $target_atom_number => $tss){
 			
 	
-			lefted_dot_count      := len(Shifted_Dot_List)
+			lefted_dot_count      := lo.Float64(len(Shifted_Dot_List))
 			atom_asa_unnormalized := MAX_ATOM_ASA_List[element_name] * lefted_dot_count //unnormalized atom asa
 			protein_asa_unnormalized += atom_asa_unnormalized //saving
 			
-			res_num = Atom_Info_DB[atom_number][6]
+			res_num := lo.Int(Atom_Info_DB[atom_number][6])
 			Resisue_ASA_Unnormalized_Sum[res_num] += atom_asa_unnormalized //saving
 			
 		
@@ -269,7 +272,7 @@ func main(){
 	
 		used_dot_count += dot_count //number of dots of used spherical grid groups   
 		
-		refined_asa := protein_asa_unnormalized / used_dot_count //asa 
+		refined_asa := protein_asa_unnormalized / lo.Float64(used_dot_count) //asa 
 		Log_Refined_ASA[group_id] = refined_asa //saving asa for quality control 
 	}
 
@@ -286,7 +289,7 @@ func main(){
 
 ///---------------------------------------------------------------------------
 ///------------------------------------------------------------------------
-func TSS_3D(Point_A []float64, Point_B []float64) float64 {
+func TSS_3D(Point_A [3]float64, Point_B [3]float64) float64 {
 
 	d_x := Point_A[0] - Point_B[0] 
 	d_y := Point_A[1] - Point_B[1] 
@@ -338,7 +341,7 @@ func checkArgs() bool {
 
 
 
-func Stand_Deviation(arr []float64) float64 {
+func Stand_Deviation(arr map[int]float64) float64 {
 	
     num_of_elements := float64(len(arr))
       
@@ -549,7 +552,7 @@ func Residue_Radius(safty_fact ...int) map[string]float64 {
 
 
 
-func Probing_TSS_Cutoff_List(VDW_Radius_List map[string]float64, probe_size int) map[string]float64 { 
+func Probing_TSS_Cutoff_List(VDW_Radius_List map[string]float64, probe_size float64) map[string]float64 { 
 	
 	Probing_TSS_Cutoff_List := map[string]float64{}
 	
@@ -564,7 +567,7 @@ func Probing_TSS_Cutoff_List(VDW_Radius_List map[string]float64, probe_size int)
 
 
 
-func MAX_ATOM_ASA_List(VDW_Radius_List map[string]float64, probe_size int ) map[string]float64 { 
+func MAX_ATOM_ASA_List(VDW_Radius_List map[string]float64, probe_size float64 ) map[string]float64 { 
 
 	MAX_ATOM_ASA_List := map[string]float64{}
 
