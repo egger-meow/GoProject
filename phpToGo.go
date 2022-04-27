@@ -23,7 +23,8 @@ var Heteroatom_Info_DB map[int][]string
 
 func main(){
 	checkArgs()
-
+  Atom_Info_DB = map[int][]string{}
+	Heteroatom_Info_DB = map[int][]string{}
   /**/
 	VDW_Radius_List := VDW_Radius_List()
   Max_RES_ASA     := Max_RES_ASA()
@@ -137,8 +138,8 @@ func main(){
 		}
 	}
 //-----------------------------------------------------------------------
-	Proximity_Table := map[int](map[int]float64){}
-	res_pair_log    := map[int](map[int]bool){}
+	Proximity_Table := map[int]map[int]float64{}
+	res_pair_log    := map[int]map[int]bool{}
 
 	for res_num,Target_Res_List := range Neighboring_Res_List{
 
@@ -230,7 +231,7 @@ func main(){
 			Expanded_Spherical_Grid = Expanded_Spherical_Grid_Set[element_name][group_id] 
 	
 			//Shifting spherical grid around target atom		
-			
+		
 			Shifted_Dot_List := [][3]float64{}
 			for _,Expanded_Dot := range Expanded_Spherical_Grid{
 				
