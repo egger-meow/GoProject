@@ -13,8 +13,8 @@ var probe_size float64       //vdw radius of the probe
 var qcv_cutoff float64      //qaulity control value as threshold for result
 var asa_sample_size int    //the number of latest asa sample to use for quality control 
 var keep_heteroatom bool  //heteroatom as default
-var Atom_Info_DB map[int][]string
-var Heteroatom_Info_DB map[int][]string
+var Atom_Info_DB = make(map[int][]string)
+var Heteroatom_Info_DB = make(map[int][]string)
 
 
 
@@ -22,8 +22,8 @@ var Heteroatom_Info_DB map[int][]string
 
 
 func main(){
-	Atom_Info_DB = map[int][]string{}
-	Heteroatom_Info_DB = map[int][]string{}
+	//Atom_Info_DB = map[int][]string{}
+	//Heteroatom_Info_DB = map[int][]string{}
 	checkArgs()
   
   /**/
@@ -50,6 +50,7 @@ func main(){
   AN_To_Element_List := map[int]string{}  // atom number to element list 
   ResNum_To_ResName  := map[int]string{}   // res_num to res_name
 
+  //lo.Println(Atom_Info_DB) // *** test
   for _, Atom_Data := range Atom_Info_DB{
     atom_number := lo.Int(Atom_Data[1])   
     atom_type   := Atom_Data[2]   
@@ -82,6 +83,7 @@ func main(){
   Spherical_Grid_Set := PDB_To_Shells(path) //extraction
   group_count := len(Spherical_Grid_Set) //get number of groups of grids
   _=group_count
+  lo.Println(path) // *** test
   Expanded_Spherical_Grid_Set :=  map[string]map[int]map[int][3]float64{} // pre-expanded spherical grids 
   for element_name, vdw_r := range VDW_Radius_List{   
     radius := vdw_r + probe_size 
@@ -106,39 +108,45 @@ func main(){
   } //for element_name, vdw_r := range VDW_Radius_List
 
 //-------------------------------------------------------------------------
-	Neighboring_Res_List := map[int]map[int]bool{}
-
+	Neighboring_Res_List := map[int](map[int]bool){}
+  /* 獨家冠名*/
+  for res_num,atom_number := range Alpha_Carbon_List{
+    Neighboring_Res_List[res_num] = map[int]bool{}
+    for target_res_num,target_atom_number := range Alpha_Carbon_List{
+      Neighboring_Res_List[res_num][target_res_num] = false
+  }
+  /**/
 	for res_num,atom_number := range Alpha_Carbon_List{
 
-	
-
 		for target_res_num,target_atom_number := range Alpha_Carbon_List{
+      
 			Neighboring_Res_List[res_num][res_num] = true
-
+      
 			if (res_num >= target_res_num){
 				continue
 			}
-
+      
 			tss := TSS_3D(Pos[atom_number], Pos[target_atom_number])
-
+      
 			res_name        := ResNum_To_ResName[res_num]
 			target_res_name := ResNum_To_ResName[target_res_num]
 			
 			res_name_r   := Res_R[res_name]
 			target_res_r := Res_R[target_res_name]
-
+      
 			cutoff_dist_res :=  res_name_r  + 6.4 + target_res_r
 			cutoff_tss_res  :=  cutoff_dist_res * cutoff_dist_res 
 			
 			if(tss <= cutoff_tss_res){
-			
+        
 				Neighboring_Res_List[res_num][target_res_num] = true; 
 				Neighboring_Res_List[target_res_num][res_num] = true; 
 				
 			} //save data if residue could be next to each others
-
+      
 		}
 	}
+  lo.Println(path + "????" ) // *** test
 //-----------------------------------------------------------------------
 	Proximity_Table := map[int]map[int]float64{}
 	res_pair_log    := map[int]map[int]bool{}
@@ -188,7 +196,7 @@ func main(){
 		}
 	}
 
-	Temp := map[int]map[int]float64{}
+	Temp := map[int](map[int]float64){}
 
 	for atom_number,Target_Data := range Proximity_Table {
 	
@@ -210,7 +218,8 @@ func main(){
 
 	Log_Refined_ASA               := map[int]float64{}
   Resisue_ASA_Unnormalized_Sum  := map[int]float64{}
-
+  
+  lo.Println(ResNum_To_ResName ) // ** test
   for res_num, _ := range ResNum_To_ResName {
 		Resisue_ASA_Unnormalized_Sum[res_num] = 0;
   } //for res_num, res_name := range ResNum_To_ResName
@@ -367,17 +376,20 @@ func main(){
 	lo.Println( "RSA:\n" )
 	lo.Println( "Residue Number\tRSA\n" )
 	
+  lo.Println(Resisue_ASA_Unnormalized_Sum)  // *** test
 	for res_num, residue_asa_unnormalized := range Resisue_ASA_Unnormalized_Sum{
 	
 		res_name := ResNum_To_ResName[res_num]
 		
 		var check bool = false
+    lo.Print( Max_RES_ASA)  // *** test
 		for keys, values := range  Max_RES_ASA{
-				_=values
-				if keys == res_name{
-					check = true
-					break
-				}
+      lo.Println(keys,res_name)  // *** test
+      _=values
+      if keys == res_name{
+        check = true
+        break
+      }
 		}
 		if(!check){
 			
@@ -524,8 +536,8 @@ func Atom_Data_Extraction_Simple(pdb_path string , chosen_chain_id string , keep
 		keep_heteroatom = keep_heter[0]
 	}
   
-	Atom_Info_DB       := map[int]([]string){}
-  Heteroatom_Info_DB := map[int]([]string){}
+	//Atom_Info_DB       := map[int]([]string){}
+  //Heteroatom_Info_DB := map[int]([]string){}
   
 	VDW_Radius_List := VDW_Radius_List()
 	
