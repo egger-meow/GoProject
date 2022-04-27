@@ -24,7 +24,7 @@ var Heteroatom_Info_DB map[int][]string
 func main(){
 	checkArgs()
 
-  /** /
+  /**/
 	VDW_Radius_List := VDW_Radius_List()
   Max_RES_ASA     := Max_RES_ASA()
   Res_R           := Residue_Radius()
@@ -55,9 +55,9 @@ func main(){
     res_name := Atom_Data[4]   
     res_num  := lo.Int(Atom_Data[6])   
     
-    x :=              lo.Float64(Atom_Data[8] )  
-    y :=              lo.Float64(Atom_Data[9] ) 
-    z :=              lo.Float64(Atom_Data[10])  
+    x :=        lo.Float64(Atom_Data[8] )  
+    y :=        lo.Float64(Atom_Data[9] ) 
+    z :=           lo.Float64(Atom_Data[10])  
     
     element_name :=   Atom_Data[13]  
 	
@@ -80,12 +80,12 @@ func main(){
   Spherical_Grid_Set := PDB_To_Shells(path) //extraction
   group_count := len(Spherical_Grid_Set) //get number of groups of grids
 
-  Expanded_Spherical_Grid_Set :=  [][][][3]float64{} // pre-expanded spherical grids 
+  Expanded_Spherical_Grid_Set :=  map[string]map[int]map[int][3]float64{} // pre-expanded spherical grids 
   for element_name, vdw_r := range VDW_Radius_List{   
     radius := vdw_r + probe_size 
     
     for group_id, Spherical_Grid := range Spherical_Grid_Set{  
-      Expanded_Spherical_Grid_Set[element_name][group_id] := [][3]float64 
+     // Expanded_Spherical_Grid_Set[element_name][group_id] := map[int][3]float64 
       
       //expand the grids to right size accoring to vdw radious of elements
       for dot_index, Dot := range Spherical_Grid {
@@ -111,7 +111,7 @@ func main(){
 		for target_res_num,target_atom_number := range Alpha_Carbon_List{
 			Neighboring_Res_List[res_num][res_num] = true
 
-			if res_num >= target_res_num{
+			if (res_num >= target_res_num){
 				continue
 			}
 
@@ -136,8 +136,8 @@ func main(){
 		}
 	}
 //-----------------------------------------------------------------------
-	Proximity_Table := map[int]map[int]float64{}
-	res_pair_log    := map[int]map[int]bool{}
+	Proximity_Table := map[int](map[int]float64){}
+	res_pair_log    := map[int](map[int]bool){}
 
 	for res_num,Target_Res_List := range Neighboring_Res_List{
 
@@ -181,13 +181,112 @@ func main(){
 			}
 		}
 	}
+
+	Temp := map[int]map[int]float64
+
+	for atom_number,Target_Data := range Proximity_Table {
+	
+		for target_atom_number,tss := range Target_Data{
+			if (atom_number == target_atom_number){
+				continue
+			}
+
+			Temp[atom_number][target_atom_number] = tss;
+		} //for target_atom_number,tss := range Target_Data
+		
+		lo.SortFloat64Slice(Temp[atom_number])
+	
+	} //for atom_number,Target_Data := range Proximity_Table 
+
+	Proximity_Table := Temp
+
+	Log_Refined_ASA               := map[int]int{}
+  Resisue_ASA_Unnormalized_Sum  := map[int]int{}
+
+  for res_num, res_name := range ResNum_To_ResName {
+		Resisue_ASA_Unnormalized_Sum[res_num] = 0;
+  } //for res_num, res_name := range ResNum_To_ResName
+
+	protein_asa_unnormalized := 0 //unnormalized protein_asa
+	used_dot_count           := 0  //number of dots of used spherical grid groups   
+
+
+	for group_id := 0; group_id < ( asa_sample_size -1 ) ; group_id++{
+
+		Expanded_Spherical_Grid := Expanded_Spherical_Grid_Set["C"][group_id]; 
+		dot_count               := len(Expanded_Spherical_Grid)
+		
+		
+		for atom_number,Target_AN_List := range Proximity_Table{	
+		
+			x := Pos[atom_number][0]
+			y := Pos[atom_number][1]
+			z := Pos[atom_number][2]
+			
+			element_name = AN_To_Element_List[atom_number];
+			
+			Expanded_Spherical_Grid = Expanded_Spherical_Grid_Set[element_name][group_id] 
+	
+			//Shifting spherical grid around target atom		
+			
+			Shifted_Dot_List := [][]float64{}
+			for _,Expanded_Dot := range Expanded_Spherical_Grid{
+				
+				Shifted_Dot_List = append(Shifted_Dot_List,[]float64{x + Expanded_Dot[0],y + Expanded_Dot[1],z + Expanded_Dot[2] })
+				
+			}//foreach($Expanded_Spherical_Grid as $Expanded_Dot){
+				
+				
+			//Probing solvent available spots  	
+
+			for target_atom_number, tss := range Target_AN_List{
+			
+				target_element_name = AN_To_Element_List[target_atom_number]
+				Target_Pos          = Pos[target_atom_number]
+				
+				probe_tss_cutoff    = Probing_TSS_Cutoff_List[target_element_name] ;
+				
+				for index, Shifted_Dot := range Shifted_Dot_List){
+					if TSS_3D(Target_Pos, Shifted_Dot) < probe_tss_cutoff {
+						Shifted_Dot_List = append(Shifted_Dot_List[:index], Shifted_Dot_List[index+1:]...)
+             
+					}
+					
+				}//foreach($Shifted_Dot as $Shifted_Dot){
+			}//foreach($Target_AN_List as $target_atom_number => $tss){
+			
+	
+			lefted_dot_count      := len($Shifted_Dot_List)
+			atom_asa_unnormalized := MAX_ATOM_ASA_List[$element_name] * lefted_dot_count //unnormalized atom asa
+			protein_asa_unnormalized += atom_asa_unnormalized //saving
+			
+			res_num = Atom_Info_DB[atom_number][6]
+			Resisue_ASA_Unnormalized_Sum[res_num] += atom_asa_unnormalized //saving
+			
+		
+			
+		}//foreach($Proximity_Table as $atom_number => $Target_AN_List){
+		
+	
+		used_dot_count += dot_count //number of dots of used spherical grid groups   
+		
+		refined_asa := protein_asa_unnormalized / used_dot_count //asa 
+		Log_Refined_ASA[group_id] = refined_asa //saving asa for quality control 
+	}
+
+
+
+	
 	/**/
-	lo.Println(Residue_Radius())
+	//lo.Println(Atom_Data_Extraction_Simple("test.pdb", chosen_chain_id ) )
 	//Atom_Data_Extraction_Simple(pdb_path,chosen_chain_id)
 }
 
 
 
+
+///---------------------------------------------------------------------------
+///------------------------------------------------------------------------
 func TSS_3D(Point_A []float64, Point_B []float64) float64 {
 
 	d_x := Point_A[0] - Point_B[0] 
@@ -301,65 +400,89 @@ func PDB_To_Shells(path string) [][][3]float64 {
 
 
 
-func Atom_Data_Extraction_Simple(PDBpath string, chosen_chain_id string, keep_heter ...bool ) bool{
-	
-	keep_heteroatom := false
+
+
+func Atom_Data_Extraction_Simple(pdb_path string , chosen_chain_id string , keep_heter ... bool) bool {	
+  keep_heteroatom := false
 	if len(keep_heter) != 0 {
 		keep_heteroatom = keep_heter[0]
 	}
-
-
+  
+	Atom_Info_DB       := map[int]([]string){}
+  Heteroatom_Info_DB := map[int]([]string){}
+  
 	VDW_Radius_List := VDW_Radius_List()
-
-	Get := strings.Split(strings.Trim(lo.File_Get_Contents(PDBpath),"\t\n\n\r\x0B"),"\n")
-	lo.Println(len(Get[0]))
-	for _,line := range Get {
-
-		record_type := lo.Trim(line[0:6]);  //ATOM     #0
-		atom_number := lo.Trim(line[6:11]);  //802      #1
-		atom_type   := lo.Trim(line[12:16]); //CA       #2
-		altLoc      := lo.Trim(line[16:17]); //         #3
-		res_name    := lo.Trim(line[17:20]); //LYS      #4
-		chain_id    := lo.Trim(line[21:22]); //A        #5
-		res_num     := lo.Trim(line[22:26]); //105      #6
-		iCode       := lo.Trim(line[26:27]); //         #7
+	
+	Get := lo.File(pdb_path); 
+	//for _, line := range Get
+  for _, line := range Get{
+		//Example: ATOM    802  CA  LYS A 105      30.356   2.148  10.394  1.00 29.41           C  
+    record_type := lo.Trim(line[0:6])   //ATOM     #0
+		atom_number := lo.Trim(line[6:11]) //802      #1
+		atom_type   := lo.Trim(line[12:16]) //CA       #2
+		altLoc      := lo.Trim(line[16:17]) //         #3
+		res_name    := lo.Trim(line[17:20]) //LYS      #4
+		chain_id    := lo.Trim(line[21:22]) //A        #5
+		res_num     := lo.Trim(line[22:26]) //105      #6
+		iCode       := lo.Trim(line[26:27]) //         #7
 		
-		x := lo.Trim(line[30:38]); //30.356   #8
-		y := lo.Trim(line[38:46]); //2.148    #9
-		z := lo.Trim(line[46:54]); //10.394   #10
-
-
-		occupancy    := lo.Trim(line[54:60]); //1.00     #11
-		temp_factor  := lo.Trim(line[60:66]); //29.41    #12
-		element_name := lo.Trim(line[76:78]); //C        #13
+    x := lo.Trim(line[30:38]) //30.356   #8
+		y := lo.Trim(line[38:46]) //2.148    #9
+		z := lo.Trim(line[46:54]) //10.394   #10
+    
+    occupancy    := lo.Trim(line[54:60]) //1.00     #11
+		temp_factor  := lo.Trim(line[60:66]) //29.41    #12
+		element_name := lo.Trim(line[76:78]) //C        #13
 		charge       := "?" //         #14
-		lo.Println(element_name,len(element_name))
-		if res_name == "HOH" || chain_id != chosen_chain_id || !(altLoc == "" || altLoc == "A"){
-			continue
-		}         //skip water data
 
-		 if VDW_Radius_List[element_name] == 0 {
-			lo.Println("unknown element:",atom_number,"\t",element_name)
-		  return false
-		} 
-		//lo.Println(record_type)
-		//lo.Println([]string{record_type, atom_number, atom_type, altLoc , res_name, chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge})
-		if record_type == "ATOM" {
-			Atom_Info_DB[lo.Int(atom_number)] = []string{record_type, atom_number, atom_type, altLoc , res_name, chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge}
-		} else if record_type == "HETATM" && keep_heteroatom == true {
-			Heteroatom_Info_DB[lo.Int(atom_number)] = []string{record_type, atom_number, atom_type, altLoc , res_name, chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge}
-		} else {
-			continue
-		}
-
+    /*test* /
+    pri:=[]string{
+        record_type, atom_number, atom_type, altLoc , res_name, 
+        chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge,
+    }
+		lo.Println(pri)
+    /**/
+    
+    if (res_name == "HOH"){continue}                  //skip water data
+		if (chain_id != chosen_chain_id){continue}       //skip unchosen chains 
+		if(!(altLoc == "" || altLoc == "A")){continue}	//choose only single altLoc
+    
+    var check bool = false
+    for keys, values := range  VDW_Radius_List{
+        _=values
+        if keys == element_name{
+            check = true
+            break
+        }
+    }
+		if(!check){
+			lo.Println("unknown element:"+lo.String(atom_number)+"\t"+element_name)
+      return false
+		} //abort and return false if uncommon atom is in the protein
 		
-	}
-	if len(Atom_Info_DB) == 0{
-		return false 
-	} //checking
-
-	return true;
+		if(record_type == "ATOM"){
+			//save infomation of atoms
+			Atom_Info_DB[ lo.Int(atom_number) ] = []string{
+        record_type, atom_number, atom_type, altLoc , res_name, 
+        chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge,
+      }
+		}else if((record_type == "HETATM") && (keep_heteroatom == true)){
+			//save infomation of heteroatoms
+			Heteroatom_Info_DB[ lo.Int(atom_number) ] = []string{
+        record_type, atom_number, atom_type, altLoc , res_name, 
+        chain_id, res_num, iCode, x, y, z, occupancy, temp_factor, element_name, charge,
+      }
+		}else{continue}
+		//saving atom data 
+		
+	} //for _, line := range Get
+	
+	
+	if ( len(Atom_Info_DB) == 0){ return false } //checking
+	return true
+  
 }
+
 
 func Max_RES_ASA() map[string]float64 { 
 	
