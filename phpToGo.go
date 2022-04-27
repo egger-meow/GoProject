@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"fmt"
+	
 	"lo"
 	"strings"
 	"math"
@@ -22,9 +22,10 @@ var Heteroatom_Info_DB map[int][]string
 
 
 func main(){
-	checkArgs()
-  Atom_Info_DB = map[int][]string{}
+	Atom_Info_DB = map[int][]string{}
 	Heteroatom_Info_DB = map[int][]string{}
+	checkArgs()
+  
   /**/
 	VDW_Radius_List := VDW_Radius_List()
   Max_RES_ASA     := Max_RES_ASA()
@@ -84,9 +85,10 @@ func main(){
   Expanded_Spherical_Grid_Set :=  map[string]map[int]map[int][3]float64{} // pre-expanded spherical grids 
   for element_name, vdw_r := range VDW_Radius_List{   
     radius := vdw_r + probe_size 
-    
+		  Expanded_Spherical_Grid_Set[element_name] = map[int]map[int][3]float64{}
+
     for group_id, Spherical_Grid := range Spherical_Grid_Set{  
-      //Expanded_Spherical_Grid_Set[element_name][group_id] := map[int][3]float64 
+      Expanded_Spherical_Grid_Set[element_name][group_id] = map[int][3]float64{}
       
       //expand the grids to right size accoring to vdw radious of elements
       for dot_index, Dot := range Spherical_Grid {
@@ -143,6 +145,7 @@ func main(){
 
 	for res_num,Target_Res_List := range Neighboring_Res_List{
 
+		res_pair_log[res_num] = map[int]bool{}
 		for target_res_num,_ := range Target_Res_List{
 
 			if res_pair_log[res_num][target_res_num]{
@@ -154,6 +157,7 @@ func main(){
 			
 			for _,atom_number := range Atoms_in_Res[res_num]{
 
+				Proximity_Table[atom_number] = map[int]float64{}
 				element_name := AN_To_Element_List[atom_number]
 				vdw_r        := VDW_Radius_List[element_name]
 
@@ -188,6 +192,7 @@ func main(){
 
 	for atom_number,Target_Data := range Proximity_Table {
 	
+		Temp[atom_number] = map[int]float64{}
 		for target_atom_number,tss := range Target_Data{
 			if (atom_number == target_atom_number){
 				continue
