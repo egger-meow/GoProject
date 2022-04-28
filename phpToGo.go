@@ -704,7 +704,7 @@ func Residue_Radius(safty_fact ...int) map[string]float64 {
 	
 	return Res_R
 }
-//Define possible distance from CA to farest atom in each residue for 
+//Define possible distance f rom CA to farest atom in each residue for 
 
 
 
