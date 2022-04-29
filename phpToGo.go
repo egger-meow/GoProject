@@ -244,6 +244,8 @@ func main(){
 
 	Proximity_Table = Temp
 
+  
+
 	Log_Refined_ASA               := map[int]float64{}
   Resisue_ASA_Unnormalized_Sum  := map[int]float64{}
   
@@ -260,6 +262,7 @@ func main(){
 
 		Expanded_Spherical_Grid := Expanded_Spherical_Grid_Set["C"][group_id]; 
 		dot_count               := lo.Float64(len(Expanded_Spherical_Grid))
+		
 		
 		
 		for atom_number,Target_AN_List := range Proximity_Table{	
@@ -307,7 +310,7 @@ func main(){
 			
 			res_num := lo.Int(Atom_Info_DB[atom_number][6])
 			Resisue_ASA_Unnormalized_Sum[res_num] += atom_asa_unnormalized //saving
-			
+		
 		
 			
 		}//foreach($Proximity_Table as $atom_number => $Target_AN_List){
@@ -317,6 +320,8 @@ func main(){
 		
 		refined_asa := protein_asa_unnormalized / lo.Float64(used_dot_count) //asa 
 		Log_Refined_ASA[group_id] = refined_asa //saving asa for quality control 
+
+	
 	}
 
 
@@ -372,13 +377,13 @@ func main(){
 			res_num := Atom_Info_DB[atom_number][6];
 			Resisue_ASA_Unnormalized_Sum[lo.Int(res_num)] += atom_asa_unnormalized; //saving
 			
-		
+			
 		}//foreach($Proximity_Table as $atom_number => $Target_AN_List){
-	
+
 		
 		used_dot_count += lo.Float64(dot_count) //number of dots of used spherical grid groups   
 		refined_asa = protein_asa_unnormalized / lo.Float64(used_dot_count) //asa 
-		
+
 		Log_Refined_ASA[group_id] = refined_asa ; //saving asa for quality control 
 		
 		//$real_shell_num = $group_id + 1;
@@ -395,42 +400,44 @@ func main(){
 		sd_asa_sample := Stand_Deviation(Array_ASA_Samples);
 		cv := sd_asa_sample / refined_asa;
 		if(cv < qcv_cutoff){break}  //pass quality checking
-		
-	}
 	
-	// Print out asa
+	}
+		// Print out asa
 	refined_asa = lo.Round(refined_asa, 3);
-	lo.Println( "ASA", refined_asa, "(squared angstrom)\n" )
+
 	
 	// Get RSA and print out
-	lo.Println( "RSA:\n" )
-	lo.Println( "Residue Number\tRSA\n" )
+
 	
-  lo.Println(Resisue_ASA_Unnormalized_Sum)  // *** test
-	for res_num, residue_asa_unnormalized := range Resisue_ASA_Unnormalized_Sum{
+  //lo.Println(Resisue_ASA_Unnormalized_Sum)  // *** test
+	lo.Println("ASA: ",refined_asa) 
+	lo.Println("RSA:") 
+	lo.Println("Residue Number\tRSA") 
+
+  keys := make([]int,0,len(Resisue_ASA_Unnormalized_Sum))
+	for key,_ := range Resisue_ASA_Unnormalized_Sum{
+		keys = append(keys,key)
+	}
+	lo.SortIntSlice(keys)
+
+
+	for _, res_num := range keys{
 	
 		res_name := ResNum_To_ResName[res_num]
 		
-		var check bool = false
-    lo.Print( Max_RES_ASA)  // *** test
-		for keys, values := range  Max_RES_ASA{
-      lo.Println(keys,res_name)  // *** test
-      _=values
-      if keys == res_name{
-        check = true
-        break
-      }
-		}
-		if(!check){
+		
+	
+		residue_asa_unnormalized := Resisue_ASA_Unnormalized_Sum[res_num]
+		if Max_RES_ASA[res_name]!=0{
 			
 			refined_residue_asa :=  residue_asa_unnormalized / lo.Float64(used_dot_count)
 			
 			refined_residue_rsa := refined_residue_asa / Max_RES_ASA[res_name];
 			refined_residue_rsa = lo.Round(refined_residue_rsa, 3)
-			lo.Println( lo.String(res_num) + "\t" + lo.String(refined_residue_rsa) + "\n")
+			lo.Println( lo.String(res_num) + "\t" + lo.String(refined_residue_rsa) )
 			
 		}else{
-			lo.Println( lo.String(res_num) + "\tError\n" )
+			lo.Println( lo.String(res_num) + "\tError" )
 		}
 	
 	} //for res_num, residue_asa_unnormalized := range Resisue_ASA_Unnormalized_Sum{
@@ -704,7 +711,7 @@ func Residue_Radius(safty_fact ...int) map[string]float64 {
 	
 	return Res_R
 }
-//Define possible distance f rom CA to farest atom in each residue for 
+//Define possible distance from CA to farest atom in each residue for 
 
 
 
