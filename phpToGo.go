@@ -15,29 +15,27 @@ var asa_sample_size int    //the number of latest asa sample to use for quality 
 var keep_heteroatom bool  //heteroatom as default
 var Atom_Info_DB = make(map[int][]string)
 var Heteroatom_Info_DB = make(map[int][]string)
-
-
-
-
+/**/
+var VDW_Radius_List = make(map[string]float64)
+var Max_RES_ASA     = make(map[string]float64)
+var Res_R           = make(map[string]float64)
+/**/
+var Probing_TSS_Cutoff_List = make(map[string]float64)
+var MAX_ATOM_ASA_List       = make(map[string]float64)
 
 
 func main(){
 	//Atom_Info_DB = map[int][]string{}
 	//Heteroatom_Info_DB = map[int][]string{}
 	checkArgs()
-  
+  fillUp()
   /**/
-	VDW_Radius_List := VDW_Radius_List()
-  Max_RES_ASA     := Max_RES_ASA()
+  
 
-	_=Max_RES_ASA
-  Res_R           := Residue_Radius()
-
-  Probing_TSS_Cutoff_List := Probing_TSS_Cutoff_List(VDW_Radius_List, probe_size)
-  MAX_ATOM_ASA_List       := MAX_ATOM_ASA_List(VDW_Radius_List, probe_size)
+  
 
 
-  check := Atom_Data_Extraction_Simple(pdb_path, chosen_chain_id) //Atom info database
+  check := Atom_Data_Extraction_Simple() //Atom info database
   if(check == false){
     lo.Print( "Error" )
     lo.Exit() 
@@ -76,7 +74,7 @@ func main(){
     
   } //for _, Atom_Data
 
-//-------------------------------------------------------------------------
+ //-------------------------------------------------------------------------
   // ###Spherical grid preparation
 	
   path := "s642-v9_20_5.pdb" // spherical grids in pdb form
@@ -502,7 +500,50 @@ func checkArgs() bool {
 
 } //func checkInput() , true legal fasle not legal
 
+func fillUp(){
 
+	VDW_Radius_List["H"]  = 1.2  
+	VDW_Radius_List["C"]  = 1.7  
+	VDW_Radius_List["N"]  = 1.55 
+	VDW_Radius_List["O"]  = 1.52 
+	VDW_Radius_List["S"]  = 1.8  
+	VDW_Radius_List["P"]  = 1.8  	
+	VDW_Radius_List["SE"] = 1.9  
+
+	Max_RES_ASA["ALA"] = 121 
+	Max_RES_ASA["ARG"] = 265 
+	Max_RES_ASA["ASN"] = 187 
+	Max_RES_ASA["ASP"] = 187 
+	Max_RES_ASA["CYS"] = 148 
+	Max_RES_ASA["GLU"] = 214 
+	Max_RES_ASA["GLN"] = 214 
+	Max_RES_ASA["GLY"] = 97  
+	Max_RES_ASA["HIS"] = 216 
+	Max_RES_ASA["ILE"] = 195 
+	Max_RES_ASA["LEU"] = 191 
+	Max_RES_ASA["LYS"] = 230 
+	Max_RES_ASA["MET"] = 203 
+	Max_RES_ASA["PHE"] = 228 
+	Max_RES_ASA["PRO"] = 154 
+	Max_RES_ASA["SER"] = 143 
+	Max_RES_ASA["THR"] = 163 
+	Max_RES_ASA["TRP"] = 264 
+	Max_RES_ASA["TYR"] = 255 
+	Max_RES_ASA["VAL"] = 165 
+
+	Res_R              = Residue_Radius()
+
+	for element_name, vdw_r := range VDW_Radius_List{
+		radious := vdw_r + lo.Float64(probe_size)
+		Probing_TSS_Cutoff_List[element_name] = radious * radious
+	} //for element_name, vdw_r
+	//Pre-calculate the tss cutoff data used in progress of  probing for availibility ofspots
+	for element_name, vdw_r := range VDW_Radius_List{
+		MAX_ATOM_ASA_List[element_name] =  4 * math.Pi * (vdw_r + lo.Float64(probe_size)) * (vdw_r + lo.Float64(probe_size)) 
+	} //for element_name, vdw_r
+	//Pre-calculate the max asa data
+
+}
 
 func Stand_Deviation(arr map[int]float64) float64 {
 	
@@ -567,7 +608,7 @@ func PDB_To_Shells(path string) [][][3]float64 {
 
 
 
-func Atom_Data_Extraction_Simple(pdb_path string , chosen_chain_id string , keep_heter ... bool) bool {	
+func Atom_Data_Extraction_Simple( keep_heter ... bool) bool {	
   keep_heteroatom := false
 	if len(keep_heter) != 0 {
 		keep_heteroatom = keep_heter[0]
@@ -576,7 +617,7 @@ func Atom_Data_Extraction_Simple(pdb_path string , chosen_chain_id string , keep
 	//Atom_Info_DB       := map[int]([]string){}
   //Heteroatom_Info_DB := map[int]([]string){}
   
-	VDW_Radius_List := VDW_Radius_List()
+
 	
 	Get := lo.File(pdb_path); 
 	//for _, line := range Get
@@ -649,33 +690,6 @@ func Atom_Data_Extraction_Simple(pdb_path string , chosen_chain_id string , keep
 }
 
 
-func Max_RES_ASA() map[string]float64 { 
-	
-	Max_RES_ASA := map[string]float64{}
-	Max_RES_ASA["ALA"] = 121 
-	Max_RES_ASA["ARG"] = 265 
-	Max_RES_ASA["ASN"] = 187 
-	Max_RES_ASA["ASP"] = 187 
-	Max_RES_ASA["CYS"] = 148 
-	Max_RES_ASA["GLU"] = 214 
-	Max_RES_ASA["GLN"] = 214 
-	Max_RES_ASA["GLY"] = 97  
-	Max_RES_ASA["HIS"] = 216 
-	Max_RES_ASA["ILE"] = 195 
-	Max_RES_ASA["LEU"] = 191 
-	Max_RES_ASA["LYS"] = 230 
-	Max_RES_ASA["MET"] = 203 
-	Max_RES_ASA["PHE"] = 228 
-	Max_RES_ASA["PRO"] = 154 
-	Max_RES_ASA["SER"] = 143 
-	Max_RES_ASA["THR"] = 163 
-	Max_RES_ASA["TRP"] = 264 
-	Max_RES_ASA["TYR"] = 255 
-	Max_RES_ASA["VAL"] = 165 
-	//Max_RES_ASA["SEC"] =   ??? 
-  
-	return Max_RES_ASA
-} //func   Max_RES_ASA
 
 
 
@@ -715,45 +729,10 @@ func Residue_Radius(safty_fact ...int) map[string]float64 {
 
 
 
-func Probing_TSS_Cutoff_List(VDW_Radius_List map[string]float64, probe_size float64) map[string]float64 { 
-	
-	Probing_TSS_Cutoff_List := map[string]float64{}
-	
-	for element_name, vdw_r := range VDW_Radius_List{
-		radious := vdw_r + lo.Float64(probe_size)
-		Probing_TSS_Cutoff_List[element_name] = radious * radious
-	} //for element_name, vdw_r
-	
-	return Probing_TSS_Cutoff_List
-} //func Probing_TSS_Cutoff_List
-//Pre-calculate the tss cutoff data used in progress of  probing for availibility ofspots
 
 
 
-func MAX_ATOM_ASA_List(VDW_Radius_List map[string]float64, probe_size float64 ) map[string]float64 { 
 
-	MAX_ATOM_ASA_List := map[string]float64{}
 
-	for element_name, vdw_r := range VDW_Radius_List{
-		MAX_ATOM_ASA_List[element_name] =  4 * math.Pi * (vdw_r + lo.Float64(probe_size)) * (vdw_r + lo.Float64(probe_size)) 
-	} //for element_name, vdw_r
 
-	return MAX_ATOM_ASA_List
-}
-//Pre-calculate the max asa data
 
-func VDW_Radius_List() map[string]float64 { 
-	
-	VDW_Radius_List :=map[string]float64{}
-	VDW_Radius_List["H"] = 1.2  
-	VDW_Radius_List["C"] = 1.7  
-	VDW_Radius_List["N"] = 1.55 
-	VDW_Radius_List["O"] = 1.52 
-	VDW_Radius_List["S"] = 1.8  
-	VDW_Radius_List["P"] = 1.8  
-	
-	VDW_Radius_List["SE"] = 1.9  
-	return VDW_Radius_List
-
-} //func VDW_Radius_List
-//define VDW_radius of atoms 
